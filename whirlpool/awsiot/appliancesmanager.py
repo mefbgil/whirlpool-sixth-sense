@@ -151,7 +151,15 @@ class AppliancesManager:
             return
 
         appliance: Appliance | None = None
-        if appliance_data.category == "cooking":
+
+        if appliance_data.category == "refrigeration":
+            appliance = Refrigerator(
+                self._mqtt,
+                appliance_data,
+            )
+            self._refrigerators[appliance_data.said] = appliance
+
+        elif appliance_data.category == "cooking":
             if has_microwave_cavity(raw_capabilities):
                 appliance = Microwave(
                     self._mqtt,
