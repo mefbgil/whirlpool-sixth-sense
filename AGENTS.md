@@ -149,3 +149,95 @@ by hand.
 
 Dependency and action updates are handled by Renovate (`.github/renovate.json`);
 GitHub Actions are pinned to commit digests.
+
+## Reverse Engineering and AI-Assisted Development
+
+Some appliance capabilities in this project are undocumented. They may need to be discovered from the official Whirlpool application, observed API/MQTT behavior, appliance state, and controlled experiments against a physical appliance.
+
+Development may be performed interactively with an AI coding assistant such as ChatGPT. The human developer runs commands locally or in a GitHub Codespace, copies relevant output to the assistant, and applies small, reviewable changes suggested by the assistant.
+
+### Recommended workflow
+
+1. **Start with observed state**
+   - Inspect raw appliance state before attempting a command.
+   - Identify the state field associated with the feature.
+   - Record its initial value so the change can be verified.
+
+2. **Use the official application as a protocol reference**
+   - Static analysis of the official Whirlpool application may be used to determine command names, fields, types, addressees, and serialization.
+   - Preserve important findings instead of relying on temporary decompilation directories.
+   - Treat inferred behavior as a hypothesis until verified on an appliance.
+
+3. **Work in small copy/paste iterations**
+   - Prefer narrowly scoped commands with manageable output.
+   - Avoid broad searches or large dumps when a smaller query answers the immediate question.
+   - Inspect diffs before running experimental code.
+   - Never expose passwords, tokens, or other credentials in chat, source files, commits, or tests.
+
+4. **Test the smallest possible command**
+   - Temporary CLI controls are useful for controlled experiments.
+   - Read state before sending the command.
+   - Send one command and wait for the appliance response or state update.
+   - Read state again and verify the expected field changed.
+   - For Boolean controls, test both directions.
+   - Do not blindly try payload variations after a failure.
+
+5. **Separate verified facts from assumptions**
+   - Distinguish behavior proven on a real appliance from behavior inferred from application code or protocol structure.
+   - Successful MQTT publication alone does not prove appliance support. Verify resulting state whenever practical.
+
+6. **Convert successful experiments into library code**
+   - Expose verified commands through an appropriate public appliance method.
+   - CLI and application code should use that method rather than private transport helpers such as `_send_command`.
+   - Remove temporary experimental shortcuts when no longer needed.
+
+7. **Add regression coverage**
+   - Add an automated test for the exact verified command payload.
+   - Test both directions where applicable.
+   - Run the focused test first, followed by the complete test suite.
+   - Physical validation and automated testing complement rather than replace each other.
+
+### Example: AWS IoT Refrigerator Vacation Mode
+
+Vacation Mode was developed using this workflow.
+
+Raw appliance state showed:
+
+```json
+{
+  "refrigerator": {
+    "vacation": false
+  }
+}
+```
+
+Static analysis of the Whirlpool application showed that Vacation Mode is a Boolean complementary command. The candidate command was then tested against a physical refrigerator.
+
+The verified command payload is:
+
+```json
+{
+  "payload": {
+    "addressee": "refrigerator",
+    "command": "set",
+    "vacation": true
+  }
+}
+```
+
+The inverse command uses `"vacation": false`.
+
+Both transitions were physically verified:
+
+- `false -> true`, followed by state reporting `"vacation": true`
+- `true -> false`, followed by state reporting `"vacation": false`
+
+The appliance emitted an attribute update after each command.
+
+After physical verification, the command was implemented as `Refrigerator.set_vacation_mode()`. The CLI was changed to use that public method, and an AWS IoT refrigerator regression test was added for both ON and OFF payloads.
+
+The resulting full test suite passed with 169 tests.
+
+For future undocumented capabilities, prefer this sequence:
+
+**protocol evidence -> minimal experiment -> physical state verification -> public API -> regression test**
