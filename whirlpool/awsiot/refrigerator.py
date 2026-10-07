@@ -119,6 +119,12 @@ class Refrigerator(BaseRefrigerator, Appliance):
     def get_vacation_mode(self) -> bool | None:
         return self._get_path_bool("refrigerator", "vacation")
 
+    async def set_vacation_mode(self, enabled: bool) -> None:
+        await self._send_command(
+            "set",
+            {"addressee": "refrigerator", "vacation": enabled},
+        )
+
     def get_control_lock(self) -> bool | None:
         return self._get_path_bool("hmiControlLockout")
 

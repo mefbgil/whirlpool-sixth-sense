@@ -307,3 +307,28 @@ async def test_subscribes_to_expected_topics(
         f"$aws/events/presence/connected/{REFRIGERATOR_SAID}",
         f"$aws/events/presence/disconnected/{REFRIGERATOR_SAID}",
     }.issubset(mqtt.subscribed_topics)
+
+
+async def test_set_vacation_mode_publishes_command(
+    aws_refrigerator_manager: tuple[AwsAppliancesManager, FakeMqttClient],
+) -> None:
+    manager, mqtt = aws_refrigerator_manager
+    refrigerator = manager.refrigerators[0]
+
+    await refrigerator.set_vacation_mode(True)
+    _, message = mqtt.published[-1]
+
+    assert message["payload"] == {
+        "addressee": "refrigerator",
+        "command": "set",
+        "vacation": True,
+    }
+
+    await refrigerator.set_vacation_mode(False)
+    _, message = mqtt.published[-1]
+
+    assert message["payload"] == {
+        "addressee": "refrigerator",
+        "command": "set",
+        "vacation": False,
+    }

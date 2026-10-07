@@ -18,6 +18,7 @@ async def show_refrigerator_menu(rf: Refrigerator) -> None:
         print("5. Set 5°C")
         print("t. Turbo toggle")
         print("l. Display lock toggle")
+        print("v. Vacation Mode toggle")
         print("u. Update status from server")
         print("p. Print status")
         print("r. Print raw status")
@@ -52,6 +53,11 @@ async def show_refrigerator_menu(rf: Refrigerator) -> None:
             await rf.set_turbo_mode(not rf.get_turbo_mode())
         elif choice == "l":
             await rf.set_display_lock(not rf.get_display_lock())
+        elif choice == "v":
+            current = rf.get_vacation_mode()
+            new_value = not bool(current)
+            print(f"Vacation Mode: {current} -> {new_value}")
+            await rf.set_vacation_mode(new_value)
         elif choice == "p":
             print_status(rf)
         elif choice == "u":
